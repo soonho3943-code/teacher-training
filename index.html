@@ -4,152 +4,264 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>교직원 연수 자료</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
-      background: #eef2f7;
+      font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+      background: #f0f4f9;
       min-height: 100vh;
     }
 
-    /* ── 목록 화면 ── */
-    #list-view {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 28px 16px 40px;
+    /* ── 헤더 배너 ── */
+    .hero {
+      background: linear-gradient(135deg, #1a3a6b 0%, #2563b0 60%, #3b82d4 100%);
+      padding: 44px 20px 36px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
     }
 
-    .page-title {
-      text-align: center;
-      font-size: 22px;
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.18);
+      color: rgba(255,255,255,0.9);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 14px;
+      border: 1px solid rgba(255,255,255,0.25);
+    }
+
+    .hero-title {
+      font-size: 28px;
       font-weight: 700;
-      color: #1a2e4a;
-      margin-bottom: 6px;
+      color: #fff;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
     }
 
-    .page-sub {
-      text-align: center;
+    .hero-sub {
       font-size: 14px;
-      color: #7a8a9a;
-      margin-bottom: 28px;
+      color: rgba(255,255,255,0.7);
+      font-weight: 400;
     }
 
-    .dept-card {
-      background: #fff;
-      border-radius: 14px;
-      padding: 18px 22px;
-      margin-bottom: 12px;
+    /* ── 목록 영역 ── */
+    #list-view { max-width: 720px; margin: 0 auto; }
+
+    .list-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      padding: 24px 20px 12px;
+    }
+
+    .list-count {
+      font-size: 13px;
+      color: #7a8a9e;
+      font-weight: 500;
+    }
+
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1.5px solid #dde5f0;
+      border-radius: 8px;
+      padding: 7px 16px;
+      font-size: 13px;
+      color: #2563b0;
+      font-weight: 600;
       cursor: pointer;
-      transition: box-shadow 0.15s, transform 0.1s;
+      font-family: inherit;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .refresh-btn:hover { background: #eef4ff; border-color: #93b8e8; }
+
+    .refresh-icon { font-size: 15px; }
+
+    #dept-list { padding: 0 16px 48px; }
+
+    /* ── 카드 ── */
+    .dept-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 0;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: stretch;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+      cursor: pointer;
+      transition: box-shadow 0.2s, transform 0.15s;
       -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    .dept-card:hover {
+      box-shadow: 0 4px 20px rgba(37,99,176,0.15);
+      transform: translateY(-1px);
     }
 
     .dept-card:active {
-      transform: scale(0.98);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+      transform: scale(0.985);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    }
+
+    .card-accent {
+      width: 5px;
+      background: linear-gradient(180deg, #2563b0, #3b82d4);
+      flex-shrink: 0;
+      border-radius: 16px 0 0 16px;
+    }
+
+    .card-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 18px 20px;
+      gap: 16px;
     }
 
     .dept-num {
-      font-size: 15px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #eef4ff;
+      color: #2563b0;
+      font-size: 14px;
       font-weight: 700;
-      color: #4a90d9;
-      min-width: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
 
     .dept-name {
       flex: 1;
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 600;
       color: #1a2e4a;
-      padding-left: 10px;
+      letter-spacing: -0.3px;
     }
 
     .open-btn {
-      background: #4a90d9;
+      background: linear-gradient(135deg, #2563b0, #3b82d4);
       color: #fff;
       border: none;
       border-radius: 10px;
       padding: 10px 22px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
+      font-family: inherit;
+      transition: opacity 0.15s, transform 0.1s;
+      box-shadow: 0 2px 8px rgba(37,99,176,0.3);
     }
 
+    .open-btn:hover { opacity: 0.88; }
+    .open-btn:active { transform: scale(0.95); }
+
+    /* ── 상태 메시지 ── */
     .state-msg {
       text-align: center;
-      padding: 50px 20px;
-      font-size: 16px;
-      color: #8a9ab0;
-      line-height: 1.7;
+      padding: 60px 20px;
+      font-size: 15px;
+      color: #9aabb8;
+      line-height: 1.8;
     }
 
+    .state-icon { font-size: 40px; margin-bottom: 12px; }
     .state-msg.error { color: #c0392b; }
 
-    .refresh-btn {
-      display: block;
-      margin: 24px auto 0;
-      background: #fff;
-      border: 1.5px solid #c8d6e5;
-      border-radius: 10px;
-      padding: 10px 28px;
-      font-size: 15px;
-      color: #4a90d9;
-      font-weight: 600;
-      cursor: pointer;
+    /* ── 로딩 스피너 ── */
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #dde5f0;
+      border-top-color: #2563b0;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
     }
 
-    /* ── PDF 뷰어 화면 ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── PDF 뷰어 ── */
     #pdf-view {
       display: none;
       position: fixed;
       inset: 0;
-      background: #1a1a1a;
+      background: #111;
       z-index: 200;
       flex-direction: column;
     }
 
     #pdf-header {
-      background: #222;
+      background: linear-gradient(90deg, #12264a, #1a3a6b);
       color: #fff;
-      padding: 12px 16px;
+      padding: 13px 20px;
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
       flex-shrink: 0;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
     }
 
     #back-btn {
-      background: #3a3a3a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.12);
       color: #fff;
-      border: none;
+      border: 1px solid rgba(255,255,255,0.2);
       border-radius: 8px;
-      padding: 9px 18px;
-      font-size: 15px;
+      padding: 8px 16px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+
+    #back-btn:hover { background: rgba(255,255,255,0.2); }
+
+    .pdf-header-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      flex-shrink: 0;
     }
 
     #pdf-title {
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 600;
       flex: 1;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      letter-spacing: -0.3px;
     }
 
     #pdf-frame {
       flex: 1;
       width: 100%;
       border: none;
-      background: #2a2a2a;
+      background: #1a1a1a;
     }
   </style>
 </head>
@@ -157,18 +269,32 @@
 
 <!-- ──────────────── 목록 화면 ──────────────── -->
 <div id="list-view">
-  <p class="page-title">교직원 연수 자료</p>
-  <p class="page-sub">부서명을 클릭하면 연수 자료가 열립니다</p>
-  <div id="dept-list">
-    <p class="state-msg">자료를 불러오는 중...</p>
+  <div class="hero">
+    <div class="hero-badge">교직원 연수</div>
+    <h1 class="hero-title">연수 자료 목록</h1>
+    <p class="hero-sub">부서명을 선택하면 연수 자료가 열립니다</p>
   </div>
-  <button class="refresh-btn" onclick="loadData()">↺ &nbsp;새로고침</button>
+
+  <div class="list-header">
+    <span class="list-count" id="list-count"></span>
+    <button class="refresh-btn" onclick="loadData()">
+      <span class="refresh-icon">↺</span> 새로고침
+    </button>
+  </div>
+
+  <div id="dept-list">
+    <div class="state-msg">
+      <div class="spinner"></div>
+      자료를 불러오는 중...
+    </div>
+  </div>
 </div>
 
 <!-- ──────────────── PDF 뷰어 화면 ──────────────── -->
 <div id="pdf-view">
   <div id="pdf-header">
-    <button id="back-btn" onclick="closePdf()">← 목록으로</button>
+    <button id="back-btn" onclick="closePdf()">&#8592; 목록으로</button>
+    <span class="pdf-header-dot"></span>
     <span id="pdf-title"></span>
   </div>
   <iframe id="pdf-frame" src="" allowfullscreen></iframe>
@@ -195,7 +321,9 @@
 
   function loadData() {
     const list = document.getElementById('dept-list');
-    list.innerHTML = '<p class="state-msg">자료를 불러오는 중...</p>';
+    const countEl = document.getElementById('list-count');
+    countEl.textContent = '';
+    list.innerHTML = '<div class="state-msg"><div class="spinner"></div>자료를 불러오는 중...</div>';
 
     const url = `https://docs.google.com/spreadsheets/d/${SHEETS_ID}/gviz/tq?tqx=out:json`;
 
@@ -210,7 +338,7 @@
         const rows = data.table.rows;
 
         if (!rows || rows.length === 0) {
-          list.innerHTML = '<p class="state-msg">아직 등록된 자료가 없습니다.<br>선생님들이 파일을 업로드하면 여기에 표시됩니다.</p>';
+          list.innerHTML = '<div class="state-msg"><div class="state-icon">📭</div>아직 등록된 자료가 없습니다.<br>선생님들이 파일을 업로드하면 여기에 표시됩니다.</div>';
           return;
         }
 
@@ -228,25 +356,31 @@
           const card = document.createElement('div');
           card.className = 'dept-card';
           card.innerHTML = `
-            <span class="dept-num">${count}</span>
-            <span class="dept-name">${name}</span>
-            <button class="open-btn">열기</button>
+            <div class="card-accent"></div>
+            <div class="card-body">
+              <span class="dept-num">${count}</span>
+              <span class="dept-name">${name}</span>
+              <button class="open-btn">열기</button>
+            </div>
           `;
           card.addEventListener('click', () => openPdf(name, fileId));
           list.appendChild(card);
         });
 
         if (count === 0) {
-          list.innerHTML = '<p class="state-msg">유효한 자료가 없습니다.<br>파일이 올바르게 업로드되었는지 확인해주세요.</p>';
+          list.innerHTML = '<div class="state-msg"><div class="state-icon">⚠️</div>유효한 자료가 없습니다.<br>파일이 올바르게 업로드되었는지 확인해주세요.</div>';
+        } else {
+          countEl.textContent = `총 ${count}개 부서`;
         }
       })
       .catch(() => {
-        list.innerHTML = `<p class="state-msg error">
+        list.innerHTML = `<div class="state-msg error">
+          <div class="state-icon">❌</div>
           자료를 불러올 수 없습니다.<br><br>
           ① SHEETS_ID가 올바른지 확인<br>
           ② Google Sheets 공유 설정 확인<br>
-          ③ 아래 새로고침 버튼을 눌러주세요
-        </p>`;
+          ③ 새로고침 버튼을 눌러주세요
+        </div>`;
       });
   }
 
