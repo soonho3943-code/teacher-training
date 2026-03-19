@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>교직원 연수 자료</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+      background: #eef2f7;
+      min-height: 100vh;
+    }
+
+    /* ── 목록 화면 ── */
+    #list-view {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 28px 16px 40px;
+    }
+
+    .page-title {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a2e4a;
+      margin-bottom: 6px;
+    }
+
+    .page-sub {
+      text-align: center;
+      font-size: 14px;
+      color: #7a8a9a;
+      margin-bottom: 28px;
+    }
+
+    .dept-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px 22px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      cursor: pointer;
+      transition: box-shadow 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .dept-card:active {
+      transform: scale(0.98);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+    }
+
+    .dept-num {
+      font-size: 15px;
+      font-weight: 700;
+      color: #4a90d9;
+      min-width: 28px;
+    }
+
+    .dept-name {
+      flex: 1;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a2e4a;
+      padding-left: 10px;
+    }
+
+    .open-btn {
+      background: #4a90d9;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 22px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .state-msg {
+      text-align: center;
+      padding: 50px 20px;
+      font-size: 16px;
+      color: #8a9ab0;
+      line-height: 1.7;
+    }
+
+    .state-msg.error { color: #c0392b; }
+
+    .refresh-btn {
+      display: block;
+      margin: 24px auto 0;
+      background: #fff;
+      border: 1.5px solid #c8d6e5;
+      border-radius: 10px;
+      padding: 10px 28px;
+      font-size: 15px;
+      color: #4a90d9;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ── PDF 뷰어 화면 ── */
+    #pdf-view {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #1a1a1a;
+      z-index: 200;
+      flex-direction: column;
+    }
+
+    #pdf-header {
+      background: #222;
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+
+    #back-btn {
+      background: #3a3a3a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    #pdf-title {
+      font-size: 17px;
+      font-weight: 600;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #pdf-frame {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background: #2a2a2a;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ──────────────── 목록 화면 ──────────────── -->
+<div id="list-view">
+  <p class="page-title">교직원 연수 자료</p>
+  <p class="page-sub">부서명을 클릭하면 연수 자료가 열립니다</p>
+  <div id="dept-list">
+    <p class="state-msg">자료를 불러오는 중...</p>
+  </div>
+  <button class="refresh-btn" onclick="loadData()">↺ &nbsp;새로고침</button>
+</div>
+
+<!-- ──────────────── PDF 뷰어 화면 ──────────────── -->
+<div id="pdf-view">
+  <div id="pdf-header">
+    <button id="back-btn" onclick="closePdf()">← 목록으로</button>
+    <span id="pdf-title"></span>
+  </div>
+  <iframe id="pdf-frame" src="" allowfullscreen></iframe>
+</div>
+
+<script>
+  // ★★★ 아래 값을 Google Sheets ID로 교체하세요 ★★★
+  const SHEETS_ID = 'YOUR_SHEETS_ID_HERE';
+
+  // Google Form 열 순서 (0부터 시작)
+  // Timestamp=0, 부서명=1, 파일=2
+  const COL_NAME = 1;
+  const COL_FILE = 2;
+
+  function extractDriveId(url) {
+    if (!url) return null;
+    let m;
+    m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+    m = url.match(/id=([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+    return null;
+  }
+
+  function loadData() {
+    const list = document.getElementById('dept-list');
+    list.innerHTML = '<p class="state-msg">자료를 불러오는 중...</p>';
+
+    const url = `https://docs.google.com/spreadsheets/d/${SHEETS_ID}/gviz/tq?tqx=out:json`;
+
+    fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error('network');
+        return res.text();
+      })
+      .then(text => {
+        const jsonStr = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?\s*$/)[1];
+        const data = JSON.parse(jsonStr);
+        const rows = data.table.rows;
+
+        if (!rows || rows.length === 0) {
+          list.innerHTML = '<p class="state-msg">아직 등록된 자료가 없습니다.<br>선생님들이 파일을 업로드하면 여기에 표시됩니다.</p>';
+          return;
+        }
+
+        list.innerHTML = '';
+        let count = 0;
+
+        rows.forEach((row) => {
+          const name = row.c[COL_NAME]?.v?.toString().trim() || '';
+          const fileUrl = row.c[COL_FILE]?.v?.toString().trim() || '';
+          const fileId = extractDriveId(fileUrl);
+
+          if (!name || !fileId) return;
+          count++;
+
+          const card = document.createElement('div');
+          card.className = 'dept-card';
+          card.innerHTML = `
+            <span class="dept-num">${count}</span>
+            <span class="dept-name">${name}</span>
+            <button class="open-btn">열기</button>
+          `;
+          card.addEventListener('click', () => openPdf(name, fileId));
+          list.appendChild(card);
+        });
+
+        if (count === 0) {
+          list.innerHTML = '<p class="state-msg">유효한 자료가 없습니다.<br>파일이 올바르게 업로드되었는지 확인해주세요.</p>';
+        }
+      })
+      .catch(() => {
+        list.innerHTML = `<p class="state-msg error">
+          자료를 불러올 수 없습니다.<br><br>
+          ① SHEETS_ID가 올바른지 확인<br>
+          ② Google Sheets 공유 설정 확인<br>
+          ③ 아래 새로고침 버튼을 눌러주세요
+        </p>`;
+      });
+  }
+
+  function openPdf(name, fileId) {
+    document.getElementById('pdf-title').textContent = name;
+    document.getElementById('pdf-frame').src =
+      `https://drive.google.com/file/d/${fileId}/preview`;
+    const view = document.getElementById('pdf-view');
+    view.style.display = 'flex';
+  }
+
+  function closePdf() {
+    document.getElementById('pdf-view').style.display = 'none';
+    document.getElementById('pdf-frame').src = '';
+  }
+
+  loadData();
+</script>
+</body>
+</html>
