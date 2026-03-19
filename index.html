@@ -176,6 +176,104 @@
     .open-btn:hover { opacity: 0.88; }
     .open-btn:active { transform: scale(0.95); }
 
+    /* ── 다중 파일 카드 ── */
+    .dept-card.multi {
+      cursor: default;
+      flex-direction: column;
+      align-items: stretch;
+      padding: 0;
+    }
+
+    .dept-card.multi:hover {
+      transform: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+    }
+
+    .dept-card.multi .card-accent {
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(90deg, #2563b0, #3b82d4);
+      border-radius: 16px 16px 0 0;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px 12px;
+    }
+
+    .file-count-badge {
+      background: #eef4ff;
+      color: #2563b0;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .file-list {
+      border-top: 1px solid #f0f4f9;
+      padding: 6px 16px 14px 20px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      margin-bottom: 3px;
+      cursor: pointer;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .file-item:last-child { margin-bottom: 0; }
+
+    .file-item:hover { background: #f0f6ff; }
+    .file-item:active { background: #dbeafe; }
+
+    .file-tree-icon {
+      color: #93b8e8;
+      font-size: 16px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .file-item-name {
+      flex: 1;
+      font-size: 15px;
+      color: #334155;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-item-name.loading {
+      color: #aab8c8;
+      font-style: italic;
+    }
+
+    .file-open-btn {
+      background: #eef4ff;
+      color: #2563b0;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+
+    .file-open-btn:hover { background: #dbeafe; }
+
     /* ── 상태 메시지 ── */
     .state-msg {
       text-align: center;
@@ -301,11 +399,14 @@
 </div>
 
 <script>
-  // ★★★ 아래 값을 Google Sheets ID로 교체하세요 ★★★
+  // ★ Google Sheets ID
   const SHEETS_ID = '1ZyqX4mubFnJNsyIsNLv3p2YCpq78VcsK4bpFyGvvX9g';
 
-  // Google Form 열 순서 (0부터 시작)
-  // Timestamp=0, 부서명=1, 파일=2
+  // ★ Google Apps Script 웹 앱 URL (파일명 조회용) — 설정 방법은 아래 주석 참고
+  // script.google.com → 새 프로젝트 → 코드 붙여넣기 → 배포 → 웹앱 URL 여기에 입력
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxh7iKeiBzvPHHJ92m4cvNGaXAaGu0CMKAv_b0a_hVK6DkhC2pKi-1270RDMz_c_3Pg/exec';
+
+  // Google Form 열 순서 (Timestamp=0, 부서명=1, 파일=2)
   const COL_NAME = 1;
   const COL_FILE = 2;
 
@@ -319,6 +420,51 @@
     return null;
   }
 
+  function stripExtension(name) {
+    return name.replace(/\.[^/.]+$/, '');
+  }
+
+  async function fetchFileNames(ids) {
+    if (!GAS_URL) return ids.map((_, i) => `자료 ${i + 1}`);
+    try {
+      const res = await fetch(`${GAS_URL}?ids=${ids.join(',')}`);
+      const names = await res.json();
+      return names.map((n, i) => n ? stripExtension(n) : `자료 ${i + 1}`);
+    } catch {
+      return ids.map((_, i) => `자료 ${i + 1}`);
+    }
+  }
+
+  function attachFileItemListeners(card, fileIds, deptName) {
+    card.querySelectorAll('.file-item').forEach((item, i) => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const label = item.querySelector('.file-item-name').textContent;
+        openPdf(`${deptName} — ${label}`, fileIds[i]);
+      });
+    });
+  }
+
+  function buildMultiCard(num, name, fileIds, fileNames) {
+    const items = fileIds.map((_, i) => `
+      <div class="file-item">
+        <span class="file-tree-icon">└</span>
+        <span class="file-item-name">${fileNames[i]}</span>
+        <button class="file-open-btn">열기</button>
+      </div>
+    `).join('');
+
+    return `
+      <div class="card-accent"></div>
+      <div class="card-header">
+        <span class="dept-num">${num}</span>
+        <span class="dept-name">${name}</span>
+        <span class="file-count-badge">파일 ${fileIds.length}개</span>
+      </div>
+      <div class="file-list">${items}</div>
+    `;
+  }
+
   function loadData() {
     const list = document.getElementById('dept-list');
     const countEl = document.getElementById('list-count');
@@ -328,14 +474,10 @@
     const url = `https://docs.google.com/spreadsheets/d/${SHEETS_ID}/gviz/tq?tqx=out:json`;
 
     fetch(url)
-      .then(res => {
-        if (!res.ok) throw new Error('network');
-        return res.text();
-      })
+      .then(res => { if (!res.ok) throw new Error('network'); return res.text(); })
       .then(text => {
         const jsonStr = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?\s*$/)[1];
-        const data = JSON.parse(jsonStr);
-        const rows = data.table.rows;
+        const rows = JSON.parse(jsonStr).table.rows;
 
         if (!rows || rows.length === 0) {
           list.innerHTML = '<div class="state-msg"><div class="state-icon">📭</div>아직 등록된 자료가 없습니다.<br>선생님들이 파일을 업로드하면 여기에 표시됩니다.</div>';
@@ -347,23 +489,41 @@
 
         rows.forEach((row) => {
           const name = row.c[COL_NAME]?.v?.toString().trim() || '';
-          const fileUrl = row.c[COL_FILE]?.v?.toString().trim() || '';
-          const fileId = extractDriveId(fileUrl);
+          const fileRaw = row.c[COL_FILE]?.v?.toString().trim() || '';
+          const fileIds = fileRaw.split(',').map(u => extractDriveId(u.trim())).filter(Boolean);
 
-          if (!name || !fileId) return;
+          if (!name || fileIds.length === 0) return;
           count++;
+          const num = count;
 
           const card = document.createElement('div');
-          card.className = 'dept-card';
-          card.innerHTML = `
-            <div class="card-accent"></div>
-            <div class="card-body">
-              <span class="dept-num">${count}</span>
-              <span class="dept-name">${name}</span>
-              <button class="open-btn">열기</button>
-            </div>
-          `;
-          card.addEventListener('click', () => openPdf(name, fileId));
+
+          if (fileIds.length === 1) {
+            // ── 단일 파일: 기존 스타일 ──
+            card.className = 'dept-card';
+            card.innerHTML = `
+              <div class="card-accent"></div>
+              <div class="card-body">
+                <span class="dept-num">${num}</span>
+                <span class="dept-name">${name}</span>
+                <button class="open-btn">열기</button>
+              </div>
+            `;
+            card.addEventListener('click', () => openPdf(name, fileIds[0]));
+          } else {
+            // ── 다중 파일: 트리 스타일 ──
+            card.className = 'dept-card multi';
+            const placeholders = fileIds.map((_, i) => `자료 ${i + 1}`);
+            card.innerHTML = buildMultiCard(num, name, fileIds, placeholders);
+            attachFileItemListeners(card, fileIds, name);
+
+            // 파일명 비동기 조회 후 업데이트
+            fetchFileNames(fileIds).then(names => {
+              card.innerHTML = buildMultiCard(num, name, fileIds, names);
+              attachFileItemListeners(card, fileIds, name);
+            });
+          }
+
           list.appendChild(card);
         });
 
@@ -384,12 +544,10 @@
       });
   }
 
-  function openPdf(name, fileId) {
-    document.getElementById('pdf-title').textContent = name;
-    document.getElementById('pdf-frame').src =
-      `https://drive.google.com/file/d/${fileId}/preview`;
-    const view = document.getElementById('pdf-view');
-    view.style.display = 'flex';
+  function openPdf(title, fileId) {
+    document.getElementById('pdf-title').textContent = title;
+    document.getElementById('pdf-frame').src = `https://drive.google.com/file/d/${fileId}/preview`;
+    document.getElementById('pdf-view').style.display = 'flex';
   }
 
   function closePdf() {
