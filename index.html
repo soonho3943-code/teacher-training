@@ -150,12 +150,28 @@
       flex-shrink: 0;
     }
 
-    .dept-name {
+    .dept-info {
       flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow: hidden;
+    }
+
+    .dept-name {
       font-size: 17px;
       font-weight: 600;
       color: #1a2e4a;
       letter-spacing: -0.3px;
+    }
+
+    .dept-filename {
+      font-size: 13px;
+      color: #7a8a9e;
+      font-weight: 400;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .open-btn {
@@ -499,17 +515,24 @@
           const card = document.createElement('div');
 
           if (fileIds.length === 1) {
-            // ── 단일 파일: 기존 스타일 ──
+            // ── 단일 파일 ──
             card.className = 'dept-card';
             card.innerHTML = `
               <div class="card-accent"></div>
               <div class="card-body">
                 <span class="dept-num">${num}</span>
-                <span class="dept-name">${name}</span>
+                <div class="dept-info">
+                  <span class="dept-name">${name}</span>
+                  <span class="dept-filename loading">불러오는 중...</span>
+                </div>
                 <button class="open-btn">열기</button>
               </div>
             `;
             card.addEventListener('click', () => openPdf(name, fileIds[0]));
+            fetchFileNames(fileIds).then(names => {
+              const el = card.querySelector('.dept-filename');
+              if (el) { el.textContent = names[0]; el.classList.remove('loading'); }
+            });
           } else {
             // ── 다중 파일: 트리 스타일 ──
             card.className = 'dept-card multi';
